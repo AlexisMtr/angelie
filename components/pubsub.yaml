@@ -1,0 +1,17 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub
+spec:
+  type: pubsub.kafka
+  metadata:
+  - name: brokers
+    value: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+  - name: consumerID
+    value: "angelie"
+  - name: authRequired
+    value: false
+  - name: saslUsername
+    value: ""
+  - name: saslPassword
+    value: ""

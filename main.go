@@ -35,6 +35,9 @@ var (
 	kafkaEventHub      bool
 	kafkaUsername      string
 	kafkaPassword      string
+	pubSubTopic        string
+
+	daprURL string
 )
 
 type logStruct struct {
@@ -78,6 +81,7 @@ func main() {
 		partCount = 5
 	}
 	flag.IntVar(&kafkaParitionCount, "kafka-partition-count", partCount, "# of Kafka partition")
+	flag.StringVar(&pubSubTopic, "topic", os.Getenv("TOPIC"), "Topic. Only one topic per worker.")
 
 	flag.Parse()
 
