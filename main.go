@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -67,8 +66,7 @@ type logStruct struct {
 
 var messageHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 	fmt.Printf("TOPIC: %s\n", msg.Topic())
-	fmt.Printf("MSG: %s\n", msg.Payload())
-	fmt.Println(string(msg.Payload()))
+	fmt.Println(msg.Payload())
 
 	trace := getRandomID(10)
 	span := getRandomID(10)
@@ -81,12 +79,7 @@ var messageHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Messa
 		"env":         os.Getenv("ENV"),
 	}
 
-	hex, err := hex.DecodeString(string(msg.Payload()))
-	if err != nil {
-		logrus.WithFields(stdFields).Errorln(err)
-		return
-	}
-	telemetry, err := decodeTelemetry(hex)
+	telemetry, err := decodeTelemetry(msg.Payload())
 	if err != nil {
 		logrus.WithFields(stdFields).Errorln(fmt.Sprintf("Unable to decode playload %s - %s", msg.Payload(), err))
 		return
