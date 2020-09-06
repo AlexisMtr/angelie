@@ -5,7 +5,9 @@ on:
     types: [opened, edited, synchronize]
     paths-ignore:
     - '.devcontainer/**'
+    - '.github/CODEOWNERS'
     - 'README.md'
+    - 'docs/*'
     branches:
     - main
   release:
