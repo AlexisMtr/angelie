@@ -11,3 +11,12 @@ func getRandomID(length int) (ID string) {
 	}
 	return string(s)
 }
+
+func contains(arr []string, val string) bool {
+	for _, v := range arr {
+		if v == val {
+			return true
+		}
+	}
+	return false
+}
