@@ -18,6 +18,7 @@ docker build -t angelie .
 
 | setting | default | env | sample |
 | ------- | ------- | --- | ------ |
+| handlers | "http,mqtt" | HANDLERS | -handlers mqtt |
 | mqtt-url | "" | MQTT_URL | -mqtt-url localhost |
 | mqtt-port | 1883 | | -mqtt-port 1883 |
 | mqtt-topic | "" | MQTT_TOPIC | -mqtt-topic device/+/telemtry |
