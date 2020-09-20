@@ -22,6 +22,7 @@ docker build -t angelie .
 | mqtt-url | "" | MQTT_URL | -mqtt-url localhost |
 | mqtt-port | 1883 | | -mqtt-port 1883 |
 | mqtt-topic | "" | MQTT_TOPIC | -mqtt-topic device/+/telemtry |
+| mqtt-topic-regex | "" | MQTT_TOPIC_REGEX | -mqtt-topic-regex device/(.+)/telemtry |
 | kakfa-broker | "" | KAFKA_BROKER | -kafka-broker localhost:9092 |
 | kafka-verbose | false | | -kafka-verbose false |
 | kafka-topic | "" | KAFKA_TOPIC | -kafka-topic telemetries |

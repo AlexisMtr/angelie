@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -23,6 +24,7 @@ var (
 	mqttBrokerURL         string
 	mqttBrokerPort        int
 	mqttTopicSubscription string
+	mqttTopicRegex        string
 
 	kafkaBrokerURL     string
 	kafkaVerbose       bool
@@ -53,6 +55,14 @@ func main() {
 	flag.StringVar(&mqttBrokerURL, "mqtt-url", os.Getenv("MQTT_URL"), "MQTT Broker URL")
 	flag.IntVar(&mqttBrokerPort, "mqtt-port", 1883, "port of MQTT Broker")
 	flag.StringVar(&mqttTopicSubscription, "mqtt-topic", os.Getenv("MQTT_TOPIC"), "MQTT Topic to subscribe")
+	flag.StringVar(&mqttTopicRegex, "mqtt-topic-regex", os.Getenv("MQTT_TOPIC_REGEX"), "MQTT Topic regex to extract deviceID (by default, replace '+' by '(.+)' in mqtt-topic). deviceID must be first match")
+	if mqttTopicRegex == "" {
+		tmp := strings.Replace(mqttTopicSubscription, "+", "(.+)", -1)
+		m := regexp.MustCompile("^\\$share\\/.+\\/")
+		mqttTopicRegex = m.ReplaceAllString(tmp, "")
+	}
+	// assert regex compile
+	_ = regexp.MustCompile(mqttTopicRegex)
 
 	// KAFKA Settings
 	flag.BoolVar(&kafkaEventHub, "kafka-eventhub", false, "Use kafka eventhub compatibility (default false)")

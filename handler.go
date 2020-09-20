@@ -37,7 +37,7 @@ var mqttMessageHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.M
 		return
 	}
 
-	pattern := regexp.MustCompile("devices/(.*)/telemetry$")
+	pattern := regexp.MustCompile(mqttTopicRegex)
 	deviceID := pattern.FindSubmatch([]byte(msg.Topic()))[1]
 
 	forwardTelemetry(string(deviceID), telemetry, logStruct{
