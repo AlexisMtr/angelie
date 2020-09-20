@@ -34,3 +34,51 @@ docker build -t angelie .
 | kafka-password* | "" | KAFKA_USER_PASSWORD | -kafka-password mysuperpassword |
 
 <sup>*</sup> For EventHub broker, use EHConnectionString as password `-kafka-password Endpoint=sb://...` (username will be ignored)
+
+## Handlers
+### HTTP
+HTTP Server listen on port 10000
+* Check health
+```sh
+curl -X GET localhost:10000/healthz
+```
+* Post telemetries
+```sh
+curl -X POST localhost:10000/telemetries/{deviceID} -d '{ "temperatureIn": 0.00, "temperatureOut": 0.00, "level": 0.00, "battery": 0.00, "ph": 0 }'
+```
+### MQTT
+If you want to use [shared subscription feature](https://www.hivemq.com/blog/mqtt5-essentials-part7-shared-subscriptions/), please add `$share/groupid/` to your mqtt-topic (ex: for `devices/+/telemetry`, use `$share/mysubscribersgroup/devices/+/telemetry` as mqtt-topic) but __not for your -mqtt-topic-regex__ (if you not specified `mqtt-topic-regex`, the shared topic part will be ignored)
+
+MQTT waiting for a byte array, you should encode your payload  
+_Sample code to encode_
+```go
+package main
+
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"math/rand"
+)
+
+// Telemetry : pool telemetry
+type Telemetry struct {
+	TemperatureIn  float32
+	TemperatureOut float32
+	Level          float32
+	Battery        float32
+	Ph             float32
+}
+
+func main() {
+	buf := new(bytes.Buffer)
+	_ = binary.Write(buf, binary.LittleEndian, Telemetry{
+		Level:          (rand.Float32() * float32(rand.Intn(80))),
+		TemperatureIn:  (rand.Float32() * float32(rand.Intn(35))),
+		TemperatureOut: (rand.Float32() * float32(rand.Intn(50))),
+		Battery:        (rand.Float32() * float32(rand.Intn(100))),
+		Ph:             (rand.Float32() * float32(rand.Intn(14))),
+	})
+	fmt.Println(buf.Bytes())
+}
+```

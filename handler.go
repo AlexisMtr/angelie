@@ -56,14 +56,9 @@ func decodeTelemetry(input []byte) (Telemetry, error) {
 }
 
 func handleHTTPRequests() {
-	// creates a new instance of a mux router
 	myRouter := mux.NewRouter().StrictSlash(true)
-	// replace http.HandleFunc with myRouter.HandleFunc
 	myRouter.HandleFunc("/healthz", healthPage)
 	myRouter.HandleFunc("/telemetries/{deviceID}", httpTelemetryHandler).Methods("POST")
-	// finally, instead of passing in nil, we want
-	// to pass in our newly created router as the second
-	// argument
 	go func() {
 		// run in goroutine to avoid blocking
 		log.Fatal(http.ListenAndServe(":10000", myRouter))
@@ -99,11 +94,11 @@ func httpTelemetryHandler(w http.ResponseWriter, r *http.Request) {
 		logrus.WithFields(stdFields).Errorln(fmt.Sprintf("Unable to decode playload %s - %s", reqBody, err))
 		return
 	}
-	fmt.Println(telemetry, deviceID, component)
-	// forwardTelemetry(string(deviceID), telemetry, logStruct{
-	// 	trace:     trace,
-	// 	span:      span,
-	// 	component: component,
-	// 	logrus:    stdFields,
-	// })
+
+	forwardTelemetry(string(deviceID), telemetry, logStruct{
+		trace:     trace,
+		span:      span,
+		component: component,
+		logrus:    stdFields,
+	})
 }
