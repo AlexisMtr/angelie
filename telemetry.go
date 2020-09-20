@@ -5,6 +5,8 @@ type Telemetry struct {
 	TemperatureIn  float32
 	TemperatureOut float32
 	Level          float32
+	Battery        float32
+	Ph             float32
 }
 
 // TelemetryDto : use to forward

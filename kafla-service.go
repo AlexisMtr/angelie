@@ -44,9 +44,11 @@ func forwardTelemetry(device string, telemetry Telemetry, logStruct logStruct) {
 	telemetryWithMeta := TelemetryMetadata{
 		DeviceID: device,
 		Telemetries: []TelemetryDto{
-			{Type: 1, Value: telemetry.TemperatureIn, Unit: "celsius"},
-			{Type: 2, Value: telemetry.TemperatureOut, Unit: "celsius"},
-			{Type: 3, Value: telemetry.Level, Unit: "m3"},
+			{Type: 0, Value: telemetry.TemperatureIn, Unit: "°C"},
+			{Type: 1, Value: telemetry.Ph, Unit: ""},
+			{Type: 2, Value: telemetry.Level, Unit: "m3"},
+			{Type: 3, Value: telemetry.Battery, Unit: "%"},
+			{Type: 4, Value: telemetry.TemperatureOut, Unit: "°C"},
 		},
 		Metadata: map[string]string{
 			"x-trace":     logStruct.trace,
