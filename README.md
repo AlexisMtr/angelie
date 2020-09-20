@@ -6,7 +6,7 @@ This project is a component of project Poseidon (connected swimming pool)
 ## Build
 Build go from source with
 ```sh
-go mod download && go build -o angelie main.go
+go mod download && go build -o angelie .
 ```
 or use Dockerfile
 ```sh
@@ -26,30 +26,9 @@ docker build -t angelie .
 | kafka-topic | "" | KAFKA_TOPIC | -kafka-topic telemetries |
 | kafka-consumer-group | "" | KAFKA_CONSUMER_GROUP | -kafka-consumer-group consumergroup |
 | kafka-client-id | "" |KAFKA_CLIENT_ID | -kafka-client-id clientid |
-| kafka-partition-count | "" | KAFKA_PARTITION_COUNT | -kafka-partition-count 3|
+| kafka-partition-count | "" | KAFKA_PARTITION_COUNT | -kafka-partition-count 3 |
+| kafka-eventhub | false | | -kafka-eventhub true |
+| kafka-username | "" | KAFKA_USER_USERNAME | -kafka-username myusername |
+| kafka-password* | "" | KAFKA_USER_PASSWORD | -kafka-password mysuperpassword |
 
-### Execution
-```sh
-./angelie \
-    -mqtt-url <mqtt_broker_url> \
-    -mqtt-port <mqtt_port> \
-    -mqtt-topic <topic_to_listen> \
-    -kafka-brokers <kafka_broker_url_with_port> \
-    -kafka-verbose <verbosity> \
-    -kafka-topic <topic_to_push_message> \
-    -kafka-consumer-group <consumer-group> \
-    -kafka-client-id <client_id> \
-    -kafka-partition-count <partition_count>
-```
-
-```sh
-docker run --rm -d \
-    -e MQTT_URL=<mqtt_broker_url> \
-    -e MQTT_TOPIC=<topic_to_listen> \
-    -e KAFKA_BROKER=<kafka_broker_url_with_port> \
-    -e KAFKA_TOPIC=<topic_to_push_message> \
-    -e KAFKA_CONSUMER_GROUP=<consumer-group> \
-    -e KAFKA_CLIENT_ID=<client_id> \
-    -e KAFKA_PARTITION_COUNT=<partition_count> \
-    angelie -mqtt-port 1883 -kafka-verbose false
-```
+<sup>*</sup> For EventHub broker, use EHConnectionString as password `-kafka-password Endpoint=sb://...` (username will be ignored)
