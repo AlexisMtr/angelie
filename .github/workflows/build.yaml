@@ -10,6 +10,14 @@ on:
     - 'docs/*'
     branches:
     - main
+  push:
+    paths-ignore:
+    - '.devcontainer/**'
+    - '.github/CODEOWNERS'
+    - 'README.md'
+    - 'docs/*'
+    branches:
+    - main
   release:
     types:
     - created
