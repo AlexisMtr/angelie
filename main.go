@@ -58,7 +58,7 @@ func main() {
 	flag.StringVar(&mqttTopicRegex, "mqtt-topic-regex", os.Getenv("MQTT_TOPIC_REGEX"), "MQTT Topic regex to extract deviceID (by default, replace '+' by '(.+)' in mqtt-topic). deviceID must be first match")
 	if mqttTopicRegex == "" {
 		tmp := strings.Replace(mqttTopicSubscription, "+", "(.+)", -1)
-		m := regexp.MustCompile("^\$share/.[^/]+/")
+		m := regexp.MustCompile("^\\$share/.[^/]+/")
 		mqttTopicRegex = m.ReplaceAllString(tmp, "")
 	}
 	// assert regex compile
