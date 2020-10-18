@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "angelie.fullname" . }}
+  labels:
+    {{- include "angelie.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "angelie.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "angelie.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args: [
+          "-mqtt-port", {{ .Values.mqtt.port | quote }},
+          "-kafka-verbose", {{ .Values.kafka.verbose | quote }},
+          "-kafka-eventhub", {{ .Values.kafka.eventhub | quote }}
+        ]
+        ports:
+        - name: http
+          containerPort: 10000
+          protocol: TCP
+        env:
+        - name: ENV
+          value: {{ .Values.environment }}
+        - name: KAFKA_USER_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ printf "%s-%s" (include "angelie.fullname" .) "kafka" }}
+              key: kafka_username
+        - name: KAFKA_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ printf "%s-%s" (include "angelie.fullname" .) "kafka" }}
+              key: kafka_password
+        - name: KAFKA_BROKER
+          valueFrom:
+            secretKeyRef:
+              name: {{ printf "%s-%s" (include "angelie.fullname" .) "kafka" }}
+              key: kafka_broker
+        - name: MQTT_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ printf "%s-%s" (include "angelie.fullname" .) "mqtt" }}
+              key: mqtt_server
+        envFrom:
+        - configMapRef:
+            name: {{ .Release.Name }}-mqtt
+        - configMapRef:
+            name: {{ .Release.Name }}-kafka
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

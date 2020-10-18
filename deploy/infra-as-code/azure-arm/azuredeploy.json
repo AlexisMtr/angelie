@@ -1,0 +1,226 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "releaseName": {
+      "type": "string",
+      "defaultValue": "angelie",
+      "metadata": {
+        "description": ""
+      }
+    },
+    "appInsightsInstrumentationKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "ApplicationInsigth Instrumentation Key. If not provided, the template will create a new AppInsights resource"
+      }
+    },
+    "eventPublishBroker": {
+      "type": "string",
+      "metadata": {
+        "description": "EventHub/Kafka broker to publish on"
+      }
+    },
+    "eventPublishPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "EventHub/Kafka password (connection string) to publish on. Put the secretUri if you want to use KeyVault"
+      }
+    },
+    "eventPublishTopic": {
+      "type": "string",
+      "metadata": {
+        "description": "EventHub/Kafka topic to publish on"
+      }
+    },
+    "eventPublishPartCount": {
+      "type": "int",
+      "defaultValue": 2,
+      "metadata": {
+        "description": "Number of partition on the broker"
+      }
+    },
+    "angelieImage": {
+      "type": "string",
+      "metadata": {
+        "description": "Docker image name (<repo>/<image>)"
+      }
+    },
+    "angelieImageTag": {
+      "type": "string",
+      "defaultValue": "latest",
+      "metadata": {
+        "description": "Docker image tag"
+      }
+    },
+    "mqttSubscribeConnectionString": {
+      "type": "securestring",
+      "metadata": {
+        "description": "MQTT Broker connection string. Put the secretUri if you want to use KeyVault"
+      }
+    },
+    "mqttSubscribeTopic": {
+      "type": "string",
+      "metadata": {
+        "description": "MQTT Topic to listen on"
+      }
+    },
+    "mqttSubscribeTopicRegex": {
+      "type": "string",
+      "defaultValue": "devices/(.+)/telemetry$",
+      "metadata": {
+        "description": "Regex to extract deviceId on topic"
+      }
+    },
+    "registryUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "docker registry URL"
+      }
+    },
+    "registryLogin": {
+      "type": "string",
+      "metadata": {
+        "description": "docker login"
+      }
+    },
+    "registryPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "docker password"
+      }
+    }
+  },
+  "functions": [{
+      "namespace": "angelie",
+      "members": {
+        "getConnectionString": {
+          "parameters": [
+            {
+              "name": "connectionString",
+              "type": "securestring"
+            }
+          ],
+          "output": {
+            "value": "[if(startsWith('http', parameters('connectionString')), concat('@Microsoft.KeyVault(SecretUri=', parameters('connectionString'), ')'), parameters('connectionString'))]",
+            "type": "securestring"
+          }
+        }
+      }
+    }],
+  "variables": {
+    "azServicePlanName": "[concat(parameters('releaseName'), '-service-plan')]",
+    "azWebAppName": "[concat(parameters('releaseName'), '-webapp')]",
+    "azAppInsightName": "[concat(parameters('releaseName'), '-appinsights')]"
+  },
+  "resources": [
+    {
+      "name": "[variables('azServicePlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2018-02-01",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "tier": "Standard",
+        "name": "S1"
+      },
+      "tags": {
+        "displayName": "[variables('azServicePlanName')]",
+        "releaseName": "[parameters('releaseName')]"
+      },
+      "properties": {
+        "name": "[variables('azServicePlanName')]"
+      }
+    },
+    {
+			"type": "Microsoft.Web/sites",
+			"name": "[variables('azWebAppName')]",
+			"apiVersion": "2018-02-01",
+			"location": "[resourceGroup().location]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "tags": {
+        "releaseName": "[parameters('releaseName')]"
+      },
+			"properties": {
+				"name": "[variables('azWebAppName')]",
+				"siteConfig": {
+					"appSettings": [
+						{
+							"name": "DOCKER_REGISTRY_SERVER_URL",
+							"value": "[parameters('registryUrl')]"
+						},
+						{
+							"name": "DOCKER_REGISTRY_SERVER_USERNAME",
+							"value": "[parameters('registryLogin')]"
+						},
+						{
+							"name": "DOCKER_REGISTRY_SERVER_PASSWORD",
+							"value": "[angelie.getConnectionString(parameters('registryPassword'))]"
+						},
+						{
+							"name": "MQTT_URL",
+							"value": "[angelie.getConnectionString(parameters('mqttSubscribeConnectionString'))]"
+						},
+						{
+							"name": "MQTT_TOPIC",
+							"value": "[parameters('mqttSubscribeTopic')]"
+						},
+						{
+							"name": "MQTT_TOPIC_REGEX",
+							"value": "[parameters('mqttSubscribeTopicRegex')]"
+						},
+						{
+							"name": "KAFKA_BROKER",
+							"value": "[parameters('eventPublishBroker')]"
+						},
+						{
+							"name": "KAFKA_USER_PASSWORD",
+							"value": "[angelie.getConnectionString(parameters('eventPublishPassword'))]"
+						},
+						{
+							"name": "KAFKA_TOPIC",
+							"value": "[parameters('eventPublishTopic')]"
+						},
+						{
+							"name": "KAFKA_PARTITION_COUNT",
+							"value": "[parameters('eventPublishPartCount')]"
+						}
+					],
+					"linuxFxVersion": "[concat('DOCKER|', parameters('angelieImage'), ':', parameters('angelieImageTag'))]"
+				},
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('azServicePlanName'))]"
+      },
+			"dependsOn": [
+				"[concat('Microsoft.Web/serverfarms/', variables('azServicePlanName'))]"
+			]
+		},
+    {
+      "condition": "[empty(parameters('appInsightsInstrumentationKey'))]",
+      "name": "[variables('azAppInsightName')]",
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2015-05-01",
+      "location": "[resourceGroup().location]",
+      "kind": "web",
+      "tags": {
+        "displayName": "[variables('azAppInsightName')]",
+        "releaseName": "[parameters('releaseName')]"
+      },
+      "properties": {
+        "Application_Type": "web",
+        "SamplingPercentage": 100
+      }
+    }
+  ],
+  "outputs": {
+    "PrincipalId": {
+      "type": "securestring",
+      "value": "[reference(concat('Microsoft.Web/sites/', variables('azWebAppName')), '2018-02-01', 'Full').identity.principalId]"
+    },
+    "appInsightInstrumentationKey": {
+      "condition": "[empty(parameters('appInsightsInstrumentationKey'))]",
+      "type": "securestring",
+      "value": "[reference(resourceId('microsoft.insights/components/', variables('azAppInsightName')), '2015-05-01').InstrumentationKey]"
+    }
+  }
+}

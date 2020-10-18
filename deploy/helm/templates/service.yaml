@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "angelie.fullname" . }}
+  labels:
+    {{- include "angelie.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+  {{- range .Values.service.ports }}
+  - port: {{ .expose }}
+    targetPort: {{ .target }}
+    protocol: TCP
+    name: {{ .name }}
+  {{- end }}
+  selector:
+    {{- include "angelie.selectorLabels" . | nindent 4 }}
