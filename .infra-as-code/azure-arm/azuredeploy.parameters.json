@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+      "releaseName": {
+          "value": "angelie"
+      },
+      "appInsightsInstrumentationKey": {
+          "value": "" 
+      },
+      "eventPublishBroker": {
+          "value": "" 
+      },
+      "eventPublishPassword": {
+          "value": "" 
+      },
+      "eventPublishTopic": {
+          "value": "" 
+      },
+      "eventPublishPartCount": {
+          "value": 2
+      },
+      "angelieImage": {
+          "value": "" 
+      },
+      "angelieImageTag": {
+          "value": "" 
+      },
+      "mqttSubscribeConnectionString": {
+          "value": "" 
+      },
+      "mqttSubscribeTopic": {
+          "value": "" 
+      },
+      "mqttSubscribeTopicRegex": {
+          "value": "devices/(.+)/telemetry$"
+      },
+      "registryUrl": {
+          "value": "" 
+      },
+      "registryLogin": {
+          "value": "" 
+      },
+      "registryPassword": {
+          "value": "" 
+      }
+  }
+}
