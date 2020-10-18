@@ -1,0 +1,27 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ printf "%s-%s" (include "angelie.fullname" .) "mqtt" }}
+  namespace: {{ .Release.Namespace }}
+data:
+{{- with .Values.mqtt }}
+  MQTT_TOPIC: {{ include "angelie.mqtt.topic" $ }}
+  MQTT_PORT: {{ .port | quote }}
+  MQTT_TOPIC_REGEX: {{ .topic_regex }}
+{{ end -}}
+{{- if .Values.kafka -}}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ printf "%s-%s" (include "angelie.fullname" .) "kafka" }}
+  namespace: {{ .Release.Namespace }}
+data:
+{{- with .Values.kafka }}
+  KAFA_VERBOSE: {{ .verbose | quote }}
+  KAFKA_TOPIC: {{ .topic }}
+  KAFKA_CONSUMER_GROUP: {{ .consumerGroup }}
+  KAFKA_CLIENT_ID: {{ .clientId }}
+  KAFKA_PARTITION_COUNT: {{ .partitionCount | quote }}
+{{ end -}}
+{{- end -}}
