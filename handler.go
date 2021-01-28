@@ -16,6 +16,12 @@ import (
 	logrus "github.com/sirupsen/logrus"
 )
 
+type daprSubscribeResponse struct {
+	pubsubname string
+	topic      string
+	route      string
+}
+
 var mqttMessageHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 	fmt.Printf("TOPIC: %s\n", msg.Topic())
 	fmt.Println(msg.Payload())
@@ -55,10 +61,18 @@ func decodeTelemetry(input []byte) (Telemetry, error) {
 	return t, err
 }
 
-func handleHTTPRequests() {
+func handleHTTPRequests(activeHandlers []string) {
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/healthz", healthPage)
-	myRouter.HandleFunc("/telemetries/{deviceID}", httpTelemetryHandler).Methods("POST")
+
+	if contains(activeHandlers, "http") {
+		myRouter.HandleFunc("/telemetries/{deviceID}", httpTelemetryHandler).Methods("POST")
+	}
+	if contains(activeHandlers, "mqtt") {
+		myRouter.HandleFunc("/dapr/subscribe", daprMqttHandler).Methods("GET")
+		myRouter.HandleFunc("/mqtt/subscritpion", nil).Methods("POST")
+	}
+
 	go func() {
 		// run in goroutine to avoid blocking
 		log.Fatal(http.ListenAndServe(":10000", myRouter))
@@ -68,6 +82,13 @@ func handleHTTPRequests() {
 func healthPage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("pong"))
+}
+
+func daprMqttHandler(w http.ResponseWriter, r *http.Request) {
+	daprResp := daprSubscribeResponse{pubsubname: daprMqttCompName, route: "/mqtt/subscription", topic: mqttTopic}
+	daprJSON, _ := json.Marshal(daprResp)
+	w.WriteHeader(http.StatusOK)
+	w.Write(daprJSON)
 }
 
 func httpTelemetryHandler(w http.ResponseWriter, r *http.Request) {
