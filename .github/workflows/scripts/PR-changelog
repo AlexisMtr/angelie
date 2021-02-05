@@ -1,0 +1,101 @@
+#! /bin/zsh
+
+tmpdir=$(mktemp -d ${PWD}/$(basename $0)_XXXX)
+trap 'rm -rf $tmpdir' 0 1 2 3
+
+print_usage ()
+{
+  if [[ -n $* ]]; then
+    echo "ERROR: $*"
+    echo -e "Exec the following to print the help:\n$(basename "$0") --help"
+    exit 1
+  fi
+
+  cat << EOF 1>&2
+Generate the CHANGELOG to put on PR Comment
+Usage:
+  $(basename $0) [-b main] [-- <extra helm upgrade options>]
+Options:
+  -b, --branch            Branch used to generate version
+  -c, --changelog-path    Path to changelog file (changelog is clean before each executions)
+  -v, --versions-path     Path to versions file (versions file is clean before each executions)
+  -h, --help              Print Help
+EOF
+}
+
+generate_local()
+{
+  echo "[]" > $VERSIONS_PATH
+
+  ROOT="$(echo ${PWD})"
+  find . -name "package.json" -type f | xargs dirname | \
+  while read folder; do
+    cd ${ROOT}/${folder}
+    packageName=$(cat package.json | jq -r '.name')
+    echo "Package: ${packageName}"
+    npx semantic-release -e semantic-release-monorepo -d -b "${GIT_BRANCH}" --no-ci | tee "${tmpdir}/${packageName}.log"
+    
+    RELEASE_TYPE="$(sed -En 's/.*Analysis of [0-9]+ commits complete: ([^\s]+) release.*/\1/p' ${tmpdir}/${packageName}.log)"
+    RELEASE_VERSION="$(sed -En '1h;1!H;${;g;s/.*Release note for version ([^\s]+)\s*:.*/\1/p;}' ${tmpdir}/${packageName}.log)"
+    CURRENT_VERSION="$(sed -En '1h;1!H;${;g;s/.*Found git tag .* associated with version (.*) on branch .*/\1/p;}' ${tmpdir}/${packageName}.log)"
+    CURRENT_TAG="$(sed -En '1h;1!H;${;g;s/.*Found git tag (.*) associated with version .* on branch .*/\1/p;}' ${tmpdir}/${packageName}.log)"
+    RELEASE_NOTES="$(sed -En '1h;1!H;${;g;s/.*Release note for version [^\s]+\s*:(.*)/\1/p;}' ${tmpdir}/${packageName}.log)"
+    
+    if [ "${RELEASE_TYPE}" != no ]
+    then
+      echo $RELEASE_NOTES > "${tmpdir}/${packageName}.changelog.md"
+      echo "{ \"name\": \"${packageName}\", \"current\": \"${CURRENT_VERSION}\", \"current_tag\": \"${CURRENT_TAG}\", \"next\": \"${RELEASE_VERSION}\", \"type\": \"${RELEASE_TYPE}\", \"changelog_path\": \"${tmpdir}/${packageName}.changelog.md\" }" > "${tmpdir}/release.json"
+      cat $VERSIONS_PATH | jq --slurpfile e $tmpdir/release.json '. + $e' | tee $VERSIONS_PATH
+      rm -rf release.json
+    fi
+    rm -rf "${tmpdir}/${packageName}.log"
+
+    cd ${ROOT}
+  done
+  return 0
+}
+
+generate()
+{
+  echo "" > $CHANGELOG_PATH
+  cat $VERSIONS_PATH | jq -c '.[]' | while read release; do
+    local_changelog_path=$(echo $release | jq -r '.changelog_path')
+    current_tag=$(echo $release | jq -r '.current_tag')
+    PR_BODY=""
+    PR_BODY+=$(cat $local_changelog_path | sed -Er "s/(^#\s)/\1${current_tag} ➡ /g")
+    PR_BODY+="\n"
+    echo $PR_BODY | \
+      sed -r 's/(^#.*)\(http([^\)]*)\)\s?/\1/g' | \
+      sed 's/^\s*//g' | \
+      sed -Er 's/\(([^\s]*)\s?\((.*)\)\)/[\1](\2)/g' | \
+      sed -Er 's/\[(.*)\s\]/[\1]/g' | tee -a $CHANGELOG_PATH
+    rm -rf $local_changelog_path
+  done
+  return 0
+}
+
+KEEP_CHANGELOG=false
+CHANGELOG_PATH="${tmpdir}/PR_CHANGELOG.md"
+VERSIONS_PATH="${tmpdir}/VERSIONS.json"
+GIT_BRANCH="${GITHUB_HEAD_REF}"
+while [[ -n "$1" ]]; do
+  case "$1" in
+    '-h'|'--help')
+      print_usage
+      exit 0 ;;
+    '-c'| '--changelog-path')
+      CHANGELOG_PATH=$2
+      shift 2;;
+    '-v'| '--versions-path')
+      VERSIONS_PATH=$2
+      shift 2;;
+    '-b'|'--branch')
+      GIT_BRANCH=$2
+      shift 2;;
+    '--') shift; break ;;
+    *) print_usage "unknown argument" ;;
+  esac
+done
+
+generate_local
+generate

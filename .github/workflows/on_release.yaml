@@ -1,0 +1,44 @@
+name: On Release
+
+on:
+  release:
+    types:
+    - released
+
+jobs:
+  release_filter:
+    name: Filter Release
+    runs-on: ubuntu-20.04
+    outputs:
+      helm: ${{ steps.release-filter.outputs.helm }}
+    steps:
+    - name: Filter release
+      id: release-filter
+      run: |
+        is_helm_release=$([[ ${{ github.event.release.tag_name }} =~ ^helm-chart-v[0-9.]+$ ]] && echo true || echo false)
+        echo "::set-output name=helm::${is_helm_release}"
+
+  notify_chart_repo:
+    needs: [ release_filter ]
+    if: ${{ needs.release_filter.outputs.helm == 'true' }}
+    name: Notify Poseidon Helm Chart repo
+    runs-on: ubuntu-20.04
+    env:
+      RELEASE_PAYLOAD: ${{ toJson(github.event.release) }}
+    steps:
+    - name: Get Chart Info
+      id: chart-info
+      run: |
+        echo $RELEASE_PAYLOAD | tee payload.json
+        chart_name=$(cat payload.json | jq -r '.assets[] | select(.name | match(".*.tgz")) | .name')
+        chart_dl_uri=$(cat payload.json | jq -r '.assets[] | select(.name | match(".*.tgz")) | .url')
+        echo "::set-output name=name::${chart_name}"
+        echo "::set-output name=dl_uri::${chart_dl_uri}"
+        
+    - name: Repository Dispatch
+      uses: peter-evans/repository-dispatch@v1
+      with:
+        token: ${{ secrets.PAT_GITHUB }}
+        repository: AlexisMtr/poseidon-helm-chart
+        event-type: chart-available
+        client-payload: '{ "name": "${{ steps.chart-info.outputs.name }}", "uri": "${{ steps.chart-info.outputs.dl_uri }}" }'

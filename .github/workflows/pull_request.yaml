@@ -1,0 +1,321 @@
+name: PullRequest
+
+on:
+  pull_request:
+    paths-ignore:
+    - '.devcontainer/**'
+    - '.github/CODEOWNERS'
+    - '**/README.md'
+    - 'docs/*'
+    branches:
+    - main
+
+jobs:
+  general:
+    name: Global
+    runs-on: ubuntu-latest
+    outputs:
+      angelie: ${{ steps.filter.outputs.angelie }}
+      helm: ${{ steps.filter.outputs.helm }}
+      pr_id: ${{ steps.get-pr-id.outputs.pr_id }}
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: 'Define PR Version suffix'
+      id: get-pr-id
+      run: echo "::set-output name=pr_id::$(echo ${GITHUB_REF} | sed -r 's#.*/([0-9]+)/merge#pr-\1#g')"
+
+    - name: Detect changes
+      uses: tony84727/changed-file-filter@0.0.3
+      id: filter
+      with:
+        filters: |
+          angelie:
+          - src/**/*
+          helm:
+          - helm/angelie/**/*
+
+  code_quality:
+    needs: [ 'general' ]
+    if: ${{ needs.general.outputs.angelie == 'true' && !contains(toJSON(github.event.commits.*.message), '[skip ci]') }}
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+    - name: Lint go files
+      run: |
+        go env
+        go install golang.org/x/lint/golint
+        golint ./src/...
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        
+
+  release_indicator:
+    if: ${{ !contains(toJSON(github.event.commits.*.message), '[skip ci]') }}
+    name: Semantic Version
+    runs-on: ubuntu-20.04
+    outputs:
+      releases: ${{ steps.release-indicator.outputs.releases }}
+    steps:
+    - name: Install zsh
+      run: sudo apt install zsh #&& sudo ln -sf "$(command -v zsh)" /bin/sh
+
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        # persist-credentials: false
+        fetch-depth: 0
+      
+    - uses: actions/setup-node@v2.1.4
+      with:
+        node-version: 14
+        
+    - name: 'Install semantic-release'
+      if: "!contains(github.ref, 'main')"
+      run: |
+        npm i -g semantic-release  \
+          semantic-release-monorepo \
+          @semantic-release/commit-analyzer \
+          @semantic-release/release-notes-generator \
+          semantic-release-helm \
+          @semantic-release/changelog \
+          @semantic-release/github \
+          @semantic-release/git \
+          @semantic-release/exec
+
+    - name: 'release indicator'
+      id: release-indicator
+      if: "!contains(github.ref, 'main')"
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT_GITHUB }}
+      run: |
+        sudo chmod u+x -R .github/workflows/scripts/
+
+        GITHUB_REF="${GITHUB_HEAD_REF}"
+        .github/workflows/scripts/PR-changelog -c $PWD/PR_CHANGELOG.md -v $PWD/VERSIONS.json
+
+        CHANGELOG=$(cat $PWD/PR_CHANGELOG.md)
+        CHANGELOG="${CHANGELOG//'%'/'%25'}"
+        CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+        CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+
+        echo "::set-output name=releases::$(cat ${PWD}/VERSIONS.json | jq '.[] | del(.changelog_path)' | jq -sc)"
+        echo "::set-output name=release_required::$(cat ${PWD}/VERSIONS.json | jq '. | length')"
+        echo "::set-output name=full_changelog::${CHANGELOG}"
+        
+        rm -rf $PWD/PR_CHANGELOG.md
+        rm -rf $PWD/VERSIONS.json
+
+    - name: 'release indicator - comment pr'
+      uses: actions/github-script@v3
+      if: "!contains(github.ref, 'main')"
+      env:
+        RELEASES: ${{ steps.release-indicator.outputs.releases }}
+        RELEASES_NOTES: ${{ steps.release-indicator.outputs.full_changelog }}
+        RELEASE_REQUIRED: ${{ steps.release-indicator.outputs.release_required }}
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          const PR_COMMENT_TITLE = '## :package: Release indicator\n\n';
+          const release = process.env.RELEASE_REQUIRED;
+          const owner = context.repo.owner;
+          const repo = context.repo.repo;
+          const issue_number = context.issue.number;
+          const comments = await github.issues.listComments({
+            owner,
+            repo,
+            issue_number,
+          });
+          const releaseIndicatorComment = comments.data.find(comment =>
+            comment.body.startsWith(PR_COMMENT_TITLE),
+          );
+          function getPRComment() {
+            if (!release) {
+              return `There are no relevant changes, so no new version is released.`;
+            }
+            return `${process.env.RELEASES_NOTES}`;
+          }
+          const body = PR_COMMENT_TITLE + getPRComment();
+          if (releaseIndicatorComment) {
+            await github.issues.updateComment({
+              owner,
+              repo,
+              body,
+              comment_id: releaseIndicatorComment.id,
+            });
+          } else {
+            await github.issues.createComment({ owner, repo, issue_number, body });
+          }
+          
+  build:
+    needs: [ 'general' ]
+    if: ${{ needs.general.outputs.angelie == 'true' && !contains(toJSON(github.event.commits.*.message), '[skip ci]') }}
+    name: Build .NET App
+    runs-on: ubuntu-20.04
+    env:
+      PR_ID: ${{ needs.general.outputs.pr_id }}
+    steps:
+    - name: Check out the repo
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0 
+
+    - name: Setup .NETCore 3.1
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '3.1.x'
+
+    - name: Build Artifact
+      run: dotnet publish src/angelie.csproj -c Debug -o ./app/publish --version-suffix "-${PR_ID}"
+
+    - name: Publish Build Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: build-artifact
+        path: ./app/publish
+        retention-days: 2
+
+  docker:
+    needs: [ 'general' ]
+    if: ${{ needs.general.outputs.angelie == 'true' && !contains(toJSON(github.event.commits.*.message), '[skip ci]') }}
+    name: Build Docker Image
+    runs-on: ubuntu-20.04
+    env:
+      PR_ID: ${{ needs.general.outputs.pr_id }}
+    steps:
+    - name: Check out the repo
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+    - name: Login to DockerHub
+      uses: docker/login-action@v1 
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Docker meta
+      id: docker_meta
+      uses: crazy-max/ghaction-docker-meta@v1
+      with:
+        images: alexismtr/angelie
+    - name: Build and push
+      id: docker_build
+      uses: docker/build-push-action@v2
+      with:
+        context: ./src
+        file: ./src/Dockerfile
+        push: true
+        tags: ${{ steps.docker_meta.outputs.tags }}
+        build-args: |
+            BUILD_VERSION=${{ steps.docker_meta.outputs.tags }}
+    - name: Image Info
+      run: |
+        echo "TAG(s): ${{ steps.docker_meta.outputs.tags }}"
+        echo "DIGEST: ${{ steps.docker_build.outputs.digest }}"
+
+
+  helm_checks:
+    needs: [ 'general', 'docker' ]
+    if: ${{ needs.general.outputs.helm == 'true' || needs.general.outputs.angelie == 'true' && !contains(toJSON(github.event.commits.*.message), '[skip ci]') }}
+    name: Helm Test
+    runs-on: ubuntu-20.04
+    env:
+      PR_ID: ${{ needs.general.outputs.pr_id }}
+    strategy:
+      matrix:
+        k8s:
+        - v1.16.15
+        - v1.17.17
+        - v1.18.15
+        - v1.19.7
+        - v1.20.2
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+      
+    - name: Change chart version
+      run: |
+        sed -Ei "s/^version:\s?([0-9\.]+)/version: \1-${PR_ID}/" helm/angelie/Chart.yaml
+        sed -Ei "s/^appVersion:\s?([0-9\.]+)/appVersion: ${PR_ID}/" helm/angelie/Chart.yaml
+
+    - name: Run kubeval on ${{ matrix.k8s }}
+      env:
+        KUBERNETES_VERSION: ${{ matrix.k8s }}
+        CHART_DIR: ./helm/angelie
+      run: |
+        set -euo pipefail
+
+        KUBEVAL_VERSION="0.15.0"
+        SCHEMA_LOCATION="https://raw.githubusercontent.com/instrumenta/kubernetes-json-schema/master/"
+        KUBEVAL_SRC=$(echo "https://github.com/instrumenta/kubeval/releases/download/${KUBEVAL_VERSION}/kubeval-linux-amd64.tar.gz")
+        # install kubeval
+        curl --silent --show-error --fail --location --output /tmp/kubeval.tar.gz $KUBEVAL_SRC
+        tar -xf /tmp/kubeval.tar.gz kubeval
+
+        helm template $CHART_DIR | ./kubeval --strict \
+          --ignore-missing-schemas --kubernetes-version "${KUBERNETES_VERSION#v}" \
+          --schema-location "${SCHEMA_LOCATION}"
+
+    # - name: Create kind ${{ matrix.k8s }} cluster
+    #   uses: helm/kind-action@master
+    #   with:
+    #     node_image: kindest/node:${{ matrix.k8s }}
+    # - name: Run chart-testing (install)
+    #   uses: helm/chart-testing-action@master
+    #   with:
+    #     command: install
+    #     config: .github/ct.yaml
+        
+  helm_package:
+    needs: [ 'general', 'helm_checks' ]
+    if: ${{ needs.general.outputs.helm == 'true' || needs.general.outputs.angelie == 'true' && !contains(toJSON(github.event.commits.*.message), '[skip ci]') }}
+    name: Helm Package
+    runs-on: ubuntu-20.04
+    env:
+      PR_ID: ${{ needs.general.outputs.pr_id }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Helm template / Package
+      run: |
+        sed -Ei "s/^version:\s?([0-9\.]+)/version: \1-${PR_ID}/" helm/angelie/Chart.yaml
+        sed -Ei "s/^appVersion:\s?([0-9\.]+)/appVersion: ${PR_ID}/" helm/angelie/Chart.yaml
+        
+        cd ./helm/angelie
+        mkdir -p artifacts
+
+        echo "Run dependency update ..."
+        helm dependency update
+
+        echo "Template chart ..."
+        helm template angelie . --namespace kind-kind -f values.yaml \
+          --set image.tag=$PR_ID | tee ./artifacts/angelie-$PR_ID.yaml
+
+        echo "Package chart ..."
+        helm package . -d ./artifacts/
+
+    - name: Publish Build Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: chart-artifact
+        path: ./helm/angelie/artifacts
+        retention-days: 2
