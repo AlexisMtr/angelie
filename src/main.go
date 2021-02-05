@@ -19,6 +19,10 @@ import (
 )
 
 var (
+	Version	string
+)
+
+var (
 	handlers string
 
 	mqttBrokerURL         string
@@ -45,6 +49,8 @@ type logStruct struct {
 }
 
 func main() {
+
+	logrus.Infof("Angelie version: %s", Version)
 
 	flag.StringVar(&handlers, "handlers", os.Getenv("HANDLERS"), "Comma separated Handler to activate (default mqtt,http)")
 	if handlers == "" {

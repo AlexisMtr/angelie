@@ -1,11 +1,12 @@
-FROM golang:1 as build
+FROM golang:1.15.2 as builder
+ARG BUILD_VERSION
 COPY . /app
 WORKDIR /app
-RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go mod download && go build -o angelie .
+ENV GO111MODULE=on
+ENV GOPROXY=direct
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-X main.Version=${BUILD_VERSION}" -v -o angelie .
 
-FROM ubuntu as runtime
-COPY --from=build /app/angelie /usr/bin/
-
+FROM alpine:latest
 EXPOSE 10000
-
-ENTRYPOINT ["/usr/bin/angelie"]
+COPY --from=builder /app/angelie /bin
+ENTRYPOINT [ "/bin/angelie" ]

