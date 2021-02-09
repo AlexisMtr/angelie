@@ -19,7 +19,8 @@ import (
 )
 
 var (
-	Version	string
+	// Version : define angelie version
+	Version string
 )
 
 var (

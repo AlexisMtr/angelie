@@ -51,7 +51,7 @@ jobs:
     - name: Lint go files
       run: |
         go env
-        go install golang.org/x/lint/golint
+        go get -u golang.org/x/lint/golint
         golint ./src/...
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@master
@@ -160,7 +160,7 @@ jobs:
   build:
     needs: [ 'general' ]
     if: ${{ needs.general.outputs.angelie == 'true' && !contains(toJSON(github.event.commits.*.message), '[skip ci]') }}
-    name: Build .NET App
+    name: Build App
     runs-on: ubuntu-20.04
     env:
       PR_ID: ${{ needs.general.outputs.pr_id }}
@@ -170,19 +170,15 @@ jobs:
       with:
         fetch-depth: 0 
 
-    - name: Setup .NETCore 3.1
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: '3.1.x'
-
-    - name: Build Artifact
-      run: dotnet publish src/angelie.csproj -c Debug -o ./app/publish --version-suffix "-${PR_ID}"
+    - name: Build Go App
+      run: |
+        CGO_ENABLED=0 GOOS=linux go build -ldflags="-X main.Version=${BUILD_VERSION}" -v -o angelie .
 
     - name: Publish Build Artifact
       uses: actions/upload-artifact@v2
       with:
         name: build-artifact
-        path: ./app/publish
+        path: angelie
         retention-days: 2
 
   docker:
