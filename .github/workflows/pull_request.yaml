@@ -172,13 +172,14 @@ jobs:
 
     - name: Build Go App
       run: |
-        CGO_ENABLED=0 GOOS=linux go build -ldflags="-X main.Version=${BUILD_VERSION}" -v -o angelie .
+        cd src
+        CGO_ENABLED=0 GOOS=linux go build -ldflags="-X main.Version=${BUILD_VERSION}" -v -o ./build/angelie .
 
     - name: Publish Build Artifact
       uses: actions/upload-artifact@v2
       with:
         name: build-artifact
-        path: angelie
+        path: ./src/build/angelie
         retention-days: 2
 
   docker:
