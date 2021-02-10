@@ -1,0 +1,26 @@
+branches:
+- main
+plugins:
+- "@semantic-release/commit-analyzer"
+- "@semantic-release/release-notes-generator"
+- - "@semantic-release/changelog"
+  - changelogFile: CHANGELOG.md
+- - "@semantic-release/exec"
+  - verifyConditionsCmd: "echo custom script"
+    prepareCmd: |
+      sed -Ei "s/^version:\s?(.*)/version: ${nextRelease.version}/g" angelie/Chart.yaml
+      helm-docs -t $PWD/README.md.gotmpl
+
+    publishCmd: 'helm package -u angelie -d .'
+- - "@semantic-release/git"
+  - assets:
+    - CHANGELOG.md
+    - angelie/Chart.yaml
+    - angelie/README.md
+    message: |-
+      release: helm chart ${nextRelease.version} [skip ci]
+
+      ${nextRelease.notes}
+- - "@semantic-release/github"
+  - assets:
+    - path: "*.tgz"

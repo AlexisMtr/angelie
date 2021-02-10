@@ -1,0 +1,131 @@
+#! /bin/zsh
+
+print_usage ()
+{
+  if [[ -n $* ]]; then
+    echo "ERROR: $*"
+    echo -e "Exec the following to print the help:\n$(basename "$0") --help"
+    exit 1
+  fi
+
+  cat << EOF 1>&2
+Update Chart AppVersion, stage, and commit it
+Usage:
+  $(basename $0) [-b main] [-- <extra helm upgrade options>]
+Options:
+  -t, --release-type        Type of release (major, minor, patch)
+  -c, --chart-path          Path to Chart file
+  -v, --version             New AppVersion
+  -s, --version-separator   Char used to separate version in case of Git tag
+  -m, --commit-message      Override the default commit message
+  -d, --dry-run             Do not stage and commit, only output commit message
+  -h, --help                Print Help
+
+Samples:
+  commit-helm --version sample-v1.2.0 --version-separator v --chart-path ./helm/sample/Chart.yaml --release-type major
+  
+    Commit message:
+      feat(sample): bump appVersion to 1.2.0
+
+      BREAKING CHANGE: bump appVersion to major release
+
+  commit-helm --version sample-v1.2.0 --version-separator v --chart-path ./helm/sample/Chart.yaml --release-type minor
+  
+    Commit message:
+      feat(sample): bump appVersion to 1.2.0
+      
+  commit-helm --version sample-v1.2.0 --version-separator v --chart-path ./helm/sample/Chart.yaml --release-type patch
+  
+    Commit message:
+      fix(sample): bump appVersion to 1.2.0
+      
+  commit-helm --version sample-v1.2.0 --version-separator v --chart-path ./helm/sample/Chart.yaml --release-type major --commit-message "chore(appVersion): bump appVersion"
+  
+    Commit message:
+      chore(appVersion): bump appVersion
+EOF
+}
+
+get_version()
+{
+  awk_args="-F${VERSION_SEPARTOR}"
+  if [[ -z $VERSION_SEPARTOR ]]
+  then
+    awk_args=""
+  fi
+  
+  echo $VERSION | awk $awk_args '{print $NF}'
+  return 0
+}
+
+get_commit_message()
+{
+  if [ "$1" = "major" ]; then
+    message="feat(${CHART_NAME}): bump appVersion to $VERSION\n\nBREAKING CHANGE: bump appVersion to major release"
+  elif [ "$1" = "minor" ]; then
+    message="feat(${CHART_NAME}): bump appVersion to $VERSION"
+  else
+    message="fix(${CHART_NAME}): bump appVersion to $VERSION"
+  fi
+  echo $message
+  return 0
+}
+
+commit()
+{
+  sed -Ei "s/appVersion:\s?(.*)/appVersion: ${VERSION}/g" $CHART_PATH
+  git add $CHART_PATH
+  git commit -m $1
+}
+
+RELEASE_TYPE="patch"
+CHART_PATH="Chart.yaml"
+VERSION="v1.0.0"
+VERSION_SEPARTOR="v"
+CHART_NAME=""
+DRY_RUN=false
+while [[ -n "$1" ]]; do
+  case "$1" in
+    '-h'|'--help')
+      print_usage
+      exit 0 ;;
+    '-t'| '--release-type')
+      RELEASE_TYPE=$2
+      shift 2;;
+    '-c'| '--chart-path')
+      CHART_PATH=$2
+      shift 2;;
+    '-v'|'--version')
+      VERSION=$2
+      shift 2;;
+    '-s'|'--version-separator')
+      VERSION_SEPARTOR=$2
+      shift 2;;
+    '-m'|'--commit-message')
+      COMMIT_MESSAGE=$2
+      shift 2;;
+    '-d'|'--dry-run')
+      DRY_RUN=true
+      shift 1;;
+    '--') shift; break ;;
+    *) print_usage "unknown argument" ;;
+  esac
+done
+
+CHART_NAME=$(cat $CHART_PATH | grep '^name:' | cut -d' ' -f2 | tr -d '\r\n')
+echo "Name: ${CHART_NAME}"
+VERSION=$(get_version)
+echo "Version: ${VERSION}"
+
+if [[ $COMMIT_MESSAGE = "" ]]
+then
+  COMMIT_MESSAGE=$(get_commit_message $RELEASE_TYPE)
+fi
+
+if [[ $DRY_RUN = "true" ]]
+then
+  echo "[DRY_RUN] ${COMMIT_MESSAGE}"
+else
+  echo "Update Chart.yaml and commit ..."
+  commit $COMMIT_MESSAGE
+fi

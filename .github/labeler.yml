@@ -1,0 +1,18 @@
+helm-chart:
+- helm/**/*
+azure:
+- infra/azure/**/*
+arm:
+- infra/azure/arm/**/*
+terraform:
+- infra/**/terraform/**/*
+source:
+- src/**/*
+docs:
+- src/docs/**/*
+- docs/**/*
+- ./**/*.md
+ci-workflow:
+- '.github/workflows/**/*'
+CODEOWNERS:
+- '.github/CODEOWNERS'

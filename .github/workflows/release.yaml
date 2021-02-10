@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    branches:
+    - main
+
+jobs:
+  code_quality:
+    if: "!contains(toJSON(github.event.commits.*.message), '[skip ci]')"
+    name: Code Quality
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.PAT_GITHUB }}
+        fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+
+    - name: Setup .NETCore 3.1
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '3.1.x'
+        
+    - name: Cache SonarCloud packages
+      uses: actions/cache@v1
+      with:
+        path: ~\sonar\cache
+        key: ${{ runner.os }}-sonar
+        restore-keys: ${{ runner.os }}-sonar
+
+    - name: Cache SonarCloud scanner
+      id: cache-sonar-scanner
+      uses: actions/cache@v1
+      with:
+        path: .\.sonar\scanner
+        key: ${{ runner.os }}-sonar-scanner
+        restore-keys: ${{ runner.os }}-sonar-scanner
+
+    - name: Install SonarCloud scanner
+      if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
+      shell: powershell
+      run: |
+        New-Item -Path .\.sonar\scanner -ItemType Directory
+        dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
+    - name: Build and analyze
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      shell: powershell
+      run: |
+        .\.sonar\scanner\dotnet-sonarscanner begin /k:"AlexisMtr_athena" /o:"alexismtr-github" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
+        dotnet publish src/Athena.sln
+        .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+
+  release:
+    needs: [ 'code_quality' ]
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    name: Semantic
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Install zsh
+      run: sudo apt install zsh
+
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        # persist-credentials: false
+        fetch-depth: 0
+      
+    - uses: actions/setup-node@v2.1.4
+      with:
+        node-version: 14
+        
+    - name: 'Install semantic-release'
+      run: |
+        npm i -g semantic-release  \
+          semantic-release-monorepo \
+          @semantic-release/commit-analyzer \
+          @semantic-release/release-notes-generator \
+          semantic-release-helm \
+          @semantic-release/changelog \
+          @semantic-release/github \
+          @semantic-release/git \
+          @semantic-release/exec
+
+        curl -LO https://github.com/norwoodj/helm-docs/releases/download/v1.5.0/helm-docs_1.5.0_Linux_x86_64.tar.gz
+        tar -xzf helm-docs_1.5.0_Linux_x86_64.tar.gz
+        sudo mv helm-docs /usr/local/bin
+
+        # check helm-docs is installed
+        helm-docs --version && exit 0 || exit 1
+
+    - name: Setup .NETCore 3.1
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '3.1.x'
+
+    - name: 'release'
+      id: release
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT_GITHUB }}
+      run: |
+        sudo chmod u+x -R .github/workflows/scripts/
+        
+        # Release Application fist
+        cd ./src/ && npx semantic-release -e semantic-release-monorepo
+        cd ..
+        
+        # Release other packages
+        find . -name "package.json" -type f -not -path "./src/*" | xargs dirname | \
+        xargs -I@ bash -c 'cd $PWD/@ && echo @ && npx semantic-release -e semantic-release-monorepo && sleep 1'
