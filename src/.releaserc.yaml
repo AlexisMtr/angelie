@@ -8,7 +8,7 @@ plugins:
 - - "@semantic-release/exec"
   - verifyConditionsCmd: "echo \"execute successCmd\""
     publishCmd: |
-      CGO_ENABLED=0 GOOS=linux go build -ldflags="-X main.Version=${nextRelease.version}" -v -o ./build/angelie .
+      CGO_ENABLED=0 GOOS=linux go build -ldflags="-X main.Version=${nextRelease.version}" -v -o ./build/angelie_linux .
 
 - - "@semantic-release/git"
   - assets:
@@ -19,7 +19,7 @@ plugins:
       ${nextRelease.notes}
 - - "@semantic-release/github"
   - assets:
-    - path: './build/'
+    - path: './build/angelie_linux'
 - - "@semantic-release/exec"
   - verifyConditionsCmd: "echo \"execute successCmd\""
     successCmd: "../.github/workflows/scripts/commit-helm -c ../helm/angelie/Chart.yaml -t ${nextRelease.type} -v ${nextRelease.version} -s v"
