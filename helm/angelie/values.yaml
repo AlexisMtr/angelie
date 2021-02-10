@@ -7,7 +7,7 @@ replicaCount: 1
 image:
   repository: alexismtr/angelie
   pullPolicy: Always
-  tag: "main"
+  tag: ""
 
 environment: dev
 
@@ -21,7 +21,7 @@ service:
       name: http
 
 mqtt:
-  server: "" # must be secret
+  server: ""
   port: 1883
   topic:
     shared: true
@@ -30,7 +30,7 @@ mqtt:
   topic_regex: devices/(.*)/telemetry
 
 kafka:
-  eventhub: true
+  eventhub: false
   topic: new_telemetries
   consumerGroup: angelie-worker
   clientId: angelie-worker-id
@@ -44,7 +44,7 @@ podAnnotations: {}
 
 resources: {}
 
-nodeSelectr: {}
+nodeSelector: {}
 
 serviceAccount:
   create: false

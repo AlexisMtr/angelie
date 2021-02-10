@@ -1,0 +1,23 @@
+  
+{{ template "chart.header" . }}
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+{{ template "chart.description" . }}
+
+## Installing the Chart
+
+To install the chart with the release name `my-release`:
+
+```console
+$ helm repo add poseidon https://alexismtr.github.io/poseidon-helm-chart
+$ helm repo update
+$ helm install my-release poseidon/{{ template "chart.name" . }} --version {{ template "chart.version" . }}
+```
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}
