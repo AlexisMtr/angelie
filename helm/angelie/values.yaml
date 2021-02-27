@@ -20,6 +20,9 @@ service:
       target: http
       name: http
 
+# -- use existing secret to set environment variable
+# see templates/secret.yaml
+existingMqttEnvSecret:
 mqtt:
   server: ""
   port: 1883
@@ -29,6 +32,9 @@ mqtt:
     name: devices/+/telemetry
   topic_regex: devices/(.*)/telemetry
 
+# -- use existing secret to set environment variable
+# see templates/secret.yaml
+existingKafkaEnvSecret:
 kafka:
   eventhub: false
   topic: new_telemetries
@@ -39,6 +45,7 @@ kafka:
   server: "" # must be secret
   username: "" # must be secret
   password: "" # must be secret
+
 
 podAnnotations: {}
 

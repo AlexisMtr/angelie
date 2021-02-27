@@ -37,22 +37,22 @@ spec:
         - name: KAFKA_USER_USERNAME
           valueFrom:
             secretKeyRef:
-              name: {{ printf "%s-%s" (include "angelie.fullname" .) "kafka" }}
+              name: {{ default (printf "%s-%s" (include "angelie.fullname" .) "kafka") .Values.existingKafkaEnvSecret }}
               key: kafka_username
         - name: KAFKA_USER_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ printf "%s-%s" (include "angelie.fullname" .) "kafka" }}
+              name: {{ default (printf "%s-%s" (include "angelie.fullname" .) "kafka") .Values.existingKafkaEnvSecret }}
               key: kafka_password
         - name: KAFKA_BROKER
           valueFrom:
             secretKeyRef:
-              name: {{ printf "%s-%s" (include "angelie.fullname" .) "kafka" }}
+              name: {{ default (printf "%s-%s" (include "angelie.fullname" .) "kafka") .Values.existingKafkaEnvSecret }}
               key: kafka_broker
         - name: MQTT_URL
           valueFrom:
             secretKeyRef:
-              name: {{ printf "%s-%s" (include "angelie.fullname" .) "mqtt" }}
+              name: {{ default (printf "%s-%s" (include "angelie.fullname" .) "mqtt") .Values.existingMqttEnvSecret }}
               key: mqtt_server
         envFrom:
         - configMapRef:
