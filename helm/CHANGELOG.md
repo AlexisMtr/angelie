@@ -1,3 +1,10 @@
+# [helm-chart-v1.0.3](https://github.com/AlexisMtr/angelie/compare/helm-chart-v1.0.2...helm-chart-v1.0.3) (2021-07-09)
+
+
+### Bug Fixes
+
+* **helm:** multi secret render ([87c1512](https://github.com/AlexisMtr/angelie/commit/87c1512aee2577c00a58a66bf63ccde14e1df3f7))
+
 # [helm-chart-v1.0.2](https://github.com/AlexisMtr/angelie/compare/helm-chart-v1.0.1...helm-chart-v1.0.2) (2021-07-09)
 
 
