@@ -1,3 +1,11 @@
+# [helm-chart-v1.0.2](https://github.com/AlexisMtr/angelie/compare/helm-chart-v1.0.1...helm-chart-v1.0.2) (2021-07-09)
+
+
+### Bug Fixes
+
+* **helm:** fix rendering secrets ([c8a47e4](https://github.com/AlexisMtr/angelie/commit/c8a47e4e1c46b7e6b5d8e3c41252745677cbf3ee))
+* **helm:** fix typo on secrets ([b2d9e6e](https://github.com/AlexisMtr/angelie/commit/b2d9e6e17640f76f3b76533c32342847973eb2cd))
+
 # [helm-chart-v1.0.1](https://github.com/AlexisMtr/angelie/compare/helm-chart-v1.0.0...helm-chart-v1.0.1) (2021-02-27)
 
 
