@@ -12,11 +12,20 @@ func getRandomID(length int) (ID string) {
 	return string(s)
 }
 
-func contains(arr []string, val string) bool {
-	for _, v := range arr {
-		if v == val {
-			return true
-		}
+func (telemetry Telemetry) MapToDto(device string, trace string, span string, component string) TelemetryMetadata {
+	return TelemetryMetadata{
+		DeviceID: device,
+		Telemetries: []TelemetryDto{
+			{Type: 0, Value: telemetry.TemperatureIn, Unit: "°C"},
+			{Type: 1, Value: float32(telemetry.Ph), Unit: ""},
+			{Type: 2, Value: telemetry.Level, Unit: "m3"},
+			{Type: 3, Value: telemetry.Battery, Unit: "%"},
+			{Type: 4, Value: telemetry.TemperatureOut, Unit: "°C"},
+		},
+		Metadata: map[string]string{
+			"x-trace":     trace,
+			"x-span":      span,
+			"x-component": component,
+		},
 	}
-	return false
 }
