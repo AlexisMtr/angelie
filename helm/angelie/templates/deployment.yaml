@@ -11,10 +11,13 @@ spec:
       {{- include "angelie.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-    {{- with .Values.podAnnotations }}
       annotations:
-        {{- toYaml . | nindent 8 }}
-    {{- end }}
+      {{- if .Values.podAnnotations }}
+      {{- toYaml .Values.podAnnotations | nindent 8 }}
+      {{- end }}
+      {{- if .Values.dapr.enabled }}
+      {{- include "angelie.dapr.annotations" . | nindent 8 }}
+      {{- end }}
       labels:
         {{- include "angelie.selectorLabels" . | nindent 8 }}
     spec:
@@ -22,11 +25,6 @@ spec:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-        args: [
-          "-mqtt-port", {{ .Values.mqtt.port | quote }},
-          "-kafka-verbose", {{ .Values.kafka.verbose | quote }},
-          "-kafka-eventhub", {{ .Values.kafka.eventhub | quote }}
-        ]
         ports:
         - name: http
           containerPort: 10000
@@ -34,31 +32,20 @@ spec:
         env:
         - name: ENV
           value: {{ .Values.environment }}
-        - name: KAFKA_USER_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: {{ default (printf "%s-%s" (include "angelie.fullname" .) "kafka") .Values.existingKafkaEnvSecret }}
-              key: kafka_username
-        - name: KAFKA_USER_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ default (printf "%s-%s" (include "angelie.fullname" .) "kafka") .Values.existingKafkaEnvSecret }}
-              key: kafka_password
-        - name: KAFKA_BROKER
-          valueFrom:
-            secretKeyRef:
-              name: {{ default (printf "%s-%s" (include "angelie.fullname" .) "kafka") .Values.existingKafkaEnvSecret }}
-              key: kafka_broker
-        - name: MQTT_URL
-          valueFrom:
-            secretKeyRef:
-              name: {{ default (printf "%s-%s" (include "angelie.fullname" .) "mqtt") .Values.existingMqttEnvSecret }}
-              key: mqtt_server
         envFrom:
         - configMapRef:
             name: {{ .Release.Name }}-mqtt
+        {{- if and .Values.dapr.enabled .Values.configuration.publish.dapr.enabled }}
         - configMapRef:
-            name: {{ .Release.Name }}-kafka
+            name: {{ printf "%s-%s" (include "angelie.fullname" .) "dapr-pub" }}
+        {{- end }}
+        {{- if and .Values.dapr.enabled .Values.configuration.subscribe.dapr.enabled }}
+        - configMapRef:
+            name: {{ printf "%s-%s" (include "angelie.fullname" .) "dapr-sub" }}
+        {{- else }}
+        - secretRef:
+            name: {{ printf "%s-%s" (include "angelie.fullname" .) "mqtt" }}
+        {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

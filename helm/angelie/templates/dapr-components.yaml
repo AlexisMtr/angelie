@@ -1,0 +1,6 @@
+{{- if .Values.dapr.enabled }}
+{{- range .Values.dapr.components }}
+---
+{{ tpl .spec $ }}
+{{- end }}
+{{- end }}

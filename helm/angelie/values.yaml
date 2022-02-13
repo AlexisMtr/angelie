@@ -9,8 +9,6 @@ image:
   pullPolicy: Always
   tag: ""
 
-environment: dev
-
 service:
   enabled: true
   type: ClusterIP
@@ -20,32 +18,11 @@ service:
       target: http
       name: http
 
-# -- use existing secret to set environment variable
-# see templates/secret.yaml
-existingMqttEnvSecret:
-mqtt:
-  server: ""
-  port: 1883
-  topic:
-    shared: true
-    group: godevice
-    name: devices/+/telemetry
-  topic_regex: devices/(.*)/telemetry
-
-# -- use existing secret to set environment variable
-# see templates/secret.yaml
-existingKafkaEnvSecret:
-kafka:
-  eventhub: false
-  topic: new_telemetries
-  consumerGroup: angelie-worker
-  clientId: angelie-worker-id
-  partitionCount: 1
-  verbose: false
-  server: "" # must be secret
-  username: "" # must be secret
-  password: "" # must be secret
-
+ingress:
+  enabled: false
+  annotations: {}
+  hosts: []
+  tls: []
 
 podAnnotations: {}
 
@@ -56,3 +33,51 @@ nodeSelector: {}
 serviceAccount:
   create: false
   name:
+
+environment: dev
+
+dapr:
+  enabled: true
+  extraAnnotations:
+  port: 3500
+  app:
+    port:
+  metrics:
+    port: 9090
+  log:
+    json: false
+    level: info
+  components:
+    # rabbitmq:
+    #   spec: |
+    #     apiVersion: dapr.io/v1alpha1
+    #     kind: Component
+    #     metadata:
+    #       name: {{ .Values.configuration.pubSub.dapr.pubComponentName }}
+    #       namespace: {{ .Release.Namespace }}
+    #     spec:
+    #       type: pubsub.rabbitmq
+    #       version: v1
+    #       metadata: # configure depend on implementation
+
+configuration:
+  subscribe:
+    topic:
+      shared: true
+      group: angelie_device
+      name: devices/+/telemetry
+      regex: devices/(.*)/telemetry
+    dapr:
+      enabled: false
+      componentName:
+    broker:
+      server:
+      port: 1883
+  publish:
+    topic: telemetry
+    dapr:
+      enabled: true
+      componentName:
+    broker:
+      connectionString:
+      secretRef:

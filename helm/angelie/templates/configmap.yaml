@@ -4,24 +4,32 @@ metadata:
   name: {{ printf "%s-%s" (include "angelie.fullname" .) "mqtt" }}
   namespace: {{ .Release.Namespace }}
 data:
-{{- with .Values.mqtt }}
+{{- with .Values.configuration.subscribe }}
   MQTT_TOPIC: {{ include "angelie.mqtt.topic" $ }}
-  MQTT_PORT: {{ .port | quote }}
-  MQTT_TOPIC_REGEX: {{ .topic_regex }}
-{{ end -}}
-{{- if .Values.kafka -}}
+  MQTT_PORT: {{ .broker.port | quote }}
+  MQTT_TOPIC_REGEX: {{ .topic.regex }}
+{{- end }}
+
+{{- if .Values.configuration.publish.dapr.enabled }}
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: {{ printf "%s-%s" (include "angelie.fullname" .) "kafka" }}
+  name: {{ printf "%s-%s" (include "angelie.fullname" .) "dapr-pub" }}
   namespace: {{ .Release.Namespace }}
 data:
-{{- with .Values.kafka }}
-  KAFA_VERBOSE: {{ .verbose | quote }}
-  KAFKA_TOPIC: {{ .topic }}
-  KAFKA_CONSUMER_GROUP: {{ .consumerGroup }}
-  KAFKA_CLIENT_ID: {{ .clientId }}
-  KAFKA_PARTITION_COUNT: {{ .partitionCount | quote }}
-{{ end -}}
-{{- end -}}
+  DAPR_PUB_COMPONENT: {{ .Values.configuration.publish.dapr.componentName | quote }}
+  DAPR_PUB_TOPIC: {{ .Values.configuration.publish.topic | quote }}
+{{- end }}
+
+{{- if .Values.configuration.subscribe.dapr.enabled }}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ printf "%s-%s" (include "angelie.fullname" .) "dapr-sub" }}
+  namespace: {{ .Release.Namespace }}
+data:
+  DAPR_SUB_COMPONENT: {{ .Values.configuration.subscribe.dapr.componentName | quote }}
+  DAPR_SUB_TOPIC: {{ .Values.configuration.subscribe.topic.name | quote }}
+{{- end }}
