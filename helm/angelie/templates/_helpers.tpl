@@ -65,7 +65,7 @@ Create the name of the service account to use
 Create the MQTT Topic
 */}}
 {{- define "angelie.mqtt.topic" -}}
-{{- with .Values.mqtt.topic -}}
+{{- with .Values.configuration.subscribe.topic -}}
 {{- if .shared -}}
 {{- printf "$share/%s/%s" .group .name -}}
 {{- else -}}
@@ -73,3 +73,16 @@ Create the MQTT Topic
 {{- end -}}
 {{- end -}}
 {{- end -}}
+
+{{- define "angelie.dapr.annotations" -}}
+dapr.io/enabled: {{ .Values.dapr.enabled | quote }}
+dapr.io/app-id: {{ include "angelie.name" . | quote }}
+{{- if .Values.dapr.app.port }}
+dapr.io/app-port: {{ .Values.dapr.app.port | quote }}
+{{- end }}
+dapr.io/log-as-json: {{ default "false" .Values.dapr.log.json | quote }}
+dapr.io/log-level: {{ default "info" .Values.dapr.log.level | quote }}
+{{- with .Values.dapr.extraAnnotations }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
