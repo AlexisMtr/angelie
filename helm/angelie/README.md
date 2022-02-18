@@ -1,7 +1,7 @@
  
 # angelie
 
-![Version: 1.0.3](https://img.shields.io/badge/Version-1.0.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
+![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.0](https://img.shields.io/badge/AppVersion-2.0.0-informational?style=flat-square)
 
 Poseidon's component Angelie
 
@@ -12,7 +12,7 @@ To install the chart with the release name `my-release`:
 ```console
 $ helm repo add poseidon https://alexismtr.github.io/poseidon-helm-chart
 $ helm repo update
-$ helm install my-release poseidon/angelie --version 1.0.3
+$ helm install my-release poseidon/angelie --version 2.0.0
 ```
 
 ## Maintainers
@@ -25,27 +25,35 @@ $ helm install my-release poseidon/angelie --version 1.0.3
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| configuration.publish.broker.connectionString | string | `nil` |  |
+| configuration.publish.broker.secretRef | string | `nil` |  |
+| configuration.publish.dapr.componentName | string | `nil` |  |
+| configuration.publish.dapr.enabled | bool | `true` |  |
+| configuration.publish.topic | string | `"telemetry"` |  |
+| configuration.subscribe.broker.port | int | `1883` |  |
+| configuration.subscribe.broker.server | string | `nil` |  |
+| configuration.subscribe.dapr.componentName | string | `nil` |  |
+| configuration.subscribe.dapr.enabled | bool | `false` |  |
+| configuration.subscribe.topic.group | string | `"angelie_device"` |  |
+| configuration.subscribe.topic.name | string | `"devices/+/telemetry"` |  |
+| configuration.subscribe.topic.regex | string | `"devices/(.*)/telemetry"` |  |
+| configuration.subscribe.topic.shared | bool | `true` |  |
+| dapr.app.port | string | `nil` |  |
+| dapr.components | string | `nil` |  |
+| dapr.enabled | bool | `true` |  |
+| dapr.extraAnnotations | string | `nil` |  |
+| dapr.log.json | bool | `false` |  |
+| dapr.log.level | string | `"info"` |  |
+| dapr.metrics.port | int | `9090` |  |
+| dapr.port | int | `3500` |  |
 | environment | string | `"dev"` |  |
-| existingKafkaEnvSecret | string | `nil` | use existing secret to set environment variable see templates/secret.yaml |
-| existingMqttEnvSecret | string | `nil` | use existing secret to set environment variable see templates/secret.yaml |
 | image.pullPolicy | string | `"Always"` |  |
 | image.repository | string | `"alexismtr/angelie"` |  |
 | image.tag | string | `""` |  |
-| kafka.clientId | string | `"angelie-worker-id"` |  |
-| kafka.consumerGroup | string | `"angelie-worker"` |  |
-| kafka.eventhub | bool | `false` |  |
-| kafka.partitionCount | int | `1` |  |
-| kafka.password | string | `""` |  |
-| kafka.server | string | `""` |  |
-| kafka.topic | string | `"new_telemetries"` |  |
-| kafka.username | string | `""` |  |
-| kafka.verbose | bool | `false` |  |
-| mqtt.port | int | `1883` |  |
-| mqtt.server | string | `""` |  |
-| mqtt.topic.group | string | `"godevice"` |  |
-| mqtt.topic.name | string | `"devices/+/telemetry"` |  |
-| mqtt.topic.shared | bool | `true` |  |
-| mqtt.topic_regex | string | `"devices/(.*)/telemetry"` |  |
+| ingress.annotations | object | `{}` |  |
+| ingress.enabled | bool | `false` |  |
+| ingress.hosts | list | `[]` |  |
+| ingress.tls | list | `[]` |  |
 | nodeSelector | object | `{}` |  |
 | podAnnotations | object | `{}` |  |
 | replicaCount | int | `1` |  |

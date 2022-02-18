@@ -1,3 +1,17 @@
+# [helm-chart-v2.0.0](https://github.com/AlexisMtr/angelie/compare/helm-chart-v1.0.3...helm-chart-v2.0.0) (2022-02-18)
+
+
+### Features
+
+* **angelie:** bump appVersion to 2.0.0 ([eb3f597](https://github.com/AlexisMtr/angelie/commit/eb3f597c35e6d580672bb7a4b90de95eb0ea0ed2))
+* **helm:** add dapr support ([a74bb88](https://github.com/AlexisMtr/angelie/commit/a74bb88f8c480858082cebc59130afda4c8020d2))
+
+
+### BREAKING CHANGES
+
+* **angelie:** bump appVersion to major release
+* **helm:** values structure has changed
+
 # [helm-chart-v1.0.3](https://github.com/AlexisMtr/angelie/compare/helm-chart-v1.0.2...helm-chart-v1.0.3) (2021-07-09)
 
 
